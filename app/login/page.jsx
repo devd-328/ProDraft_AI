@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useForm } from 'react-hook-form'
 import { useSearchParams } from 'next/navigation'
 import { signIn, signUp, signInWithGoogle, getUser } from '@/lib/supabase'
@@ -8,7 +8,7 @@ import { Sparkles, Mail, Lock, Loader2, User, Eye, EyeOff, ArrowRight, CheckCirc
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
-export default function LoginPage() {
+function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
@@ -70,7 +70,7 @@ export default function LoginPage() {
           return
         }
 
-        const { error, data: authData } = await signUp(data.email, data.password, data.fullName)
+        const { error } = await signUp(data.email, data.password, data.fullName)
         if (error) {
           setError(error.message)
         } else {
@@ -310,5 +310,23 @@ export default function LoginPage() {
         </div>
       </main>
     </div>
+  )
+}
+
+// Loading fallback component
+function LoginLoading() {
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+    </div>
+  )
+}
+
+// Main page component with Suspense boundary
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<LoginLoading />}>
+      <LoginForm />
+    </Suspense>
   )
 }
