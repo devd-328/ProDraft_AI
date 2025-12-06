@@ -356,8 +356,7 @@ export default function AppPage() {
 
       {/* Footer */}
       <footer className="border-t border-slate-100 py-6 mt-8">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-400">
-          <p>Built with ❤️ using Next.js & Gemini AI</p>
+        <div className="max-w-6xl mx-auto px-4 flex items-center justify-center text-sm text-slate-400">
           <Link href="/" className="hover:text-indigo-600 transition-colors">
             ← Back to Home
           </Link>

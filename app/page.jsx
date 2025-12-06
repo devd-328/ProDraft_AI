@@ -656,10 +656,6 @@ export default function LandingPage() {
                 <Twitter className="w-5 h-5" />
               </a>
             </div>
-
-            <p className="text-sm text-slate-400">
-              Built with ❤️ using Next.js & Gemini AI
-            </p>
           </div>
         </div>
       </footer>
