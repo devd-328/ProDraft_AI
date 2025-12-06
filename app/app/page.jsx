@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { 
   Sparkles, Copy, RefreshCw, Mail, Share2, FileText, AlignLeft, 
-  Download, Check, Menu, User, LogIn, ChevronDown,
-  FileDown, FileType, Home, LogOut, Loader2
+  Download, Check, User, ChevronDown, Settings,
+  FileDown, FileType, LogOut, Loader2, LayoutDashboard, Wand2
 } from 'lucide-react'
 import Link from 'next/link'
 import { getUser, trackUsage, signOut } from '@/lib/supabase'
@@ -27,7 +27,6 @@ export default function AppPage() {
   const [isCopied, setIsCopied] = useState(false)
   const [user, setUser] = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const router = useRouter()
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm()
@@ -37,7 +36,6 @@ export default function AppPage() {
     async function checkUser() {
       const currentUser = await getUser()
       if (!currentUser) {
-        // Redirect to login if not authenticated
         router.push('/login?redirect=/app')
         return
       }
@@ -69,7 +67,6 @@ export default function AppPage() {
       
       if (response.ok) {
         setOutputText(result.output)
-        // Track usage
         await trackUsage(user.id, format, data.inputText.length, result.output.length)
       } else {
         setOutputText('Error: ' + result.error)
@@ -92,9 +89,7 @@ export default function AppPage() {
 
   const handleExport = (type) => {
     if (!outputText) return
-    
     const filename = `prodraft-${format}-${Date.now()}`
-    
     if (type === 'txt') {
       exportAsTxt(outputText, filename)
     } else {
@@ -102,192 +97,189 @@ export default function AppPage() {
     }
   }
 
-  // Show loading while checking auth
+  const getUserInitials = () => {
+    const name = user?.user_metadata?.full_name || user?.email || ''
+    if (user?.user_metadata?.full_name) {
+      return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    }
+    return name.slice(0, 2).toUpperCase()
+  }
+
+  const getDisplayName = () => {
+    return user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User'
+  }
+
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mx-auto mb-4" />
-          <p className="text-slate-500">Loading...</p>
+          <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mx-auto mb-3" />
+          <p className="text-slate-500 text-sm">Loading...</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-slate-100 sticky top-0 z-50">
-        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+    <div className="min-h-screen bg-slate-50">
+      {/* Clean Header */}
+      <header className="bg-white border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           {/* Logo */}
-          <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                <Sparkles className="w-4 h-4 text-white" />
-              </div>
-              <span className="text-xl font-bold text-slate-900">ProDraft</span>
-            </Link>
-            <Link 
-              href="/" 
-              className="hidden sm:flex items-center gap-1 text-sm text-slate-400 hover:text-slate-600 transition-colors"
-            >
-              <Home className="w-3.5 h-3.5" />
-              Home
-            </Link>
-          </div>
+          <Link href="/" className="flex items-center gap-2">
+            <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-white" />
+            </div>
+            <span className="text-lg font-semibold text-slate-900">ProDraft</span>
+          </Link>
 
-          {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center gap-4">
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-lg text-slate-700 font-medium transition-colors"
-            >
-              <User className="w-4 h-4" />
-              Dashboard
-            </Link>
-            <button
-              onClick={handleSignOut}
-              className="flex items-center gap-2 px-3 py-2 text-slate-500 hover:text-red-600 transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-              Sign Out
-            </button>
-          </nav>
+          {/* User Menu */}
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger asChild>
+              <button className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-100 transition-colors">
+                <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
+                  <span className="text-xs font-semibold text-indigo-600">{getUserInitials()}</span>
+                </div>
+                <span className="hidden sm:block text-sm font-medium text-slate-700">{getDisplayName()}</span>
+                <ChevronDown className="w-4 h-4 text-slate-400" />
+              </button>
+            </DropdownMenu.Trigger>
 
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 text-slate-600 hover:text-slate-900"
-          >
-            <Menu className="w-6 h-6" />
-          </button>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                className="min-w-[200px] bg-white rounded-xl shadow-lg shadow-slate-200/50 border border-slate-200 p-1.5 z-50"
+                sideOffset={8}
+                align="end"
+              >
+                <div className="px-3 py-2 border-b border-slate-100 mb-1">
+                  <p className="text-sm font-medium text-slate-900">{getDisplayName()}</p>
+                  <p className="text-xs text-slate-500">{user?.email}</p>
+                </div>
+                
+                <DropdownMenu.Item asChild>
+                  <Link
+                    href="/dashboard"
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 rounded-lg outline-none"
+                  >
+                    <LayoutDashboard className="w-4 h-4" />
+                    Dashboard
+                  </Link>
+                </DropdownMenu.Item>
+                
+                <DropdownMenu.Item asChild>
+                  <Link
+                    href="/settings"
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 rounded-lg outline-none"
+                  >
+                    <Settings className="w-4 h-4" />
+                    Settings
+                  </Link>
+                </DropdownMenu.Item>
+
+                <DropdownMenu.Separator className="h-px bg-slate-100 my-1" />
+                
+                <DropdownMenu.Item
+                  className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg outline-none"
+                  onClick={handleSignOut}
+                >
+                  <LogOut className="w-4 h-4" />
+                  Sign Out
+                </DropdownMenu.Item>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
         </div>
-
-        {/* Mobile Menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-slate-100 bg-white px-4 py-3 space-y-2">
-            <Link
-              href="/dashboard"
-              className="flex items-center gap-2 px-4 py-3 bg-slate-100 rounded-lg text-slate-700 font-medium"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <User className="w-4 h-4" />
-              Dashboard
-            </Link>
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false)
-                handleSignOut()
-              }}
-              className="w-full flex items-center gap-2 px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg font-medium"
-            >
-              <LogOut className="w-4 h-4" />
-              Sign Out
-            </button>
-          </div>
-        )}
       </header>
 
-      {/* Main App */}
-      <main className="max-w-6xl mx-auto px-4 py-8">
-        {/* User welcome */}
-        <div className="mb-6 flex items-center gap-3">
-          <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
-            <User className="w-5 h-5 text-indigo-600" />
-          </div>
-          <div>
-            <p className="text-sm text-slate-500">Welcome back,</p>
-            <p className="font-medium text-slate-900">{user?.email}</p>
-          </div>
-        </div>
-
+      {/* Main Content */}
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             
-            {/* Input Card */}
-            <div className="bg-white rounded-2xl shadow-sm shadow-slate-200/50 border border-slate-100 overflow-hidden">
-              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                <h2 className="font-semibold text-slate-900">Input</h2>
-                <span className="text-xs text-slate-400">{inputText.length} chars</span>
+            {/* Input Panel */}
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                <h2 className="text-sm font-medium text-slate-900">Your Draft</h2>
+                <span className="text-xs text-slate-400">{inputText.length} characters</span>
               </div>
               
-              <div className="p-5">
+              <div className="p-4">
                 <textarea
                   {...register('inputText', { required: 'Please enter some text' })}
-                  className="w-full h-48 sm:h-56 p-4 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all resize-none text-slate-800 placeholder-slate-400 outline-none text-base"
-                  placeholder="Paste your rough notes, ideas, or draft here... (e.g., 'met with client, they want changes to the logo, need to send update by friday')"
+                  className="w-full h-40 p-3 rounded-lg border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 transition-all resize-none text-slate-800 placeholder-slate-400 outline-none text-sm"
+                  placeholder="Paste your rough notes, ideas, or draft here..."
                 />
                 {errors.inputText && (
-                  <p className="text-red-500 text-sm mt-2">{errors.inputText.message}</p>
+                  <p className="text-red-500 text-xs mt-2">{errors.inputText.message}</p>
                 )}
               </div>
 
               {/* Format Selection */}
-              <div className="px-5 pb-5">
-                <label className="block text-sm font-medium text-slate-700 mb-3">
+              <div className="px-4 pb-4">
+                <label className="block text-xs font-medium text-slate-500 mb-2 uppercase tracking-wide">
                   Output Format
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-4 gap-2">
                   {formatOptions.map((opt) => (
                     <button
                       key={opt.id}
                       type="button"
                       onClick={() => setFormat(opt.id)}
-                      className={`flex flex-col items-center gap-1 p-3 rounded-xl border transition-all ${
+                      className={`flex flex-col items-center gap-1 p-2.5 rounded-lg border text-xs font-medium transition-all ${
                         format === opt.id
                           ? 'bg-indigo-50 border-indigo-200 text-indigo-700'
-                          : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-slate-100'
+                          : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
                       }`}
                     >
-                      <opt.icon className="w-5 h-5" />
-                      <span className="text-sm font-medium">{opt.label}</span>
+                      <opt.icon className="w-4 h-4" />
+                      {opt.label}
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* Generate Button */}
-              <div className="px-5 pb-5">
+              <div className="p-4 bg-slate-50 border-t border-slate-100">
                 <button
                   type="submit"
                   disabled={isLoading || !inputText.trim()}
-                  className="w-full py-4 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 disabled:from-indigo-300 disabled:to-indigo-300 text-white rounded-xl font-semibold shadow-lg shadow-indigo-200 hover:shadow-xl hover:shadow-indigo-300 disabled:shadow-none transition-all flex items-center justify-center gap-2"
+                  className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white rounded-lg font-medium transition-all flex items-center justify-center gap-2 text-sm"
                 >
                   {isLoading ? (
                     <>
-                      <RefreshCw className="w-5 h-5 animate-spin" />
+                      <RefreshCw className="w-4 h-4 animate-spin" />
                       Polishing...
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-5 h-5" />
-                      Generate Polish
+                      <Wand2 className="w-4 h-4" />
+                      Polish Content
                     </>
                   )}
                 </button>
               </div>
             </div>
 
-            {/* Output Card */}
-            <div className="bg-white rounded-2xl shadow-sm shadow-slate-200/50 border border-slate-100 overflow-hidden flex flex-col">
-              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                <h2 className="font-semibold text-slate-900">Result</h2>
+            {/* Output Panel */}
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col">
+              <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                <h2 className="text-sm font-medium text-slate-900">Result</h2>
                 
                 {outputText && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
                     <button
                       type="button"
                       onClick={handleCopy}
-                      className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                      className="flex items-center gap-1 px-2 py-1 text-xs text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
                     >
                       {isCopied ? (
                         <>
-                          <Check className="w-4 h-4 text-green-600" />
-                          <span className="text-green-600">Copied!</span>
+                          <Check className="w-3.5 h-3.5 text-green-600" />
+                          <span className="text-green-600">Copied</span>
                         </>
                       ) : (
                         <>
-                          <Copy className="w-4 h-4" />
+                          <Copy className="w-3.5 h-3.5" />
                           Copy
                         </>
                       )}
@@ -297,31 +289,30 @@ export default function AppPage() {
                       <DropdownMenu.Trigger asChild>
                         <button
                           type="button"
-                          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                          className="flex items-center gap-1 px-2 py-1 text-xs text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
                         >
-                          <Download className="w-4 h-4" />
+                          <Download className="w-3.5 h-3.5" />
                           Export
-                          <ChevronDown className="w-3 h-3" />
                         </button>
                       </DropdownMenu.Trigger>
 
                       <DropdownMenu.Portal>
                         <DropdownMenu.Content
-                          className="min-w-[160px] bg-white rounded-xl shadow-lg shadow-slate-200 border border-slate-100 p-1.5 z-50"
+                          className="min-w-[140px] bg-white rounded-lg shadow-lg border border-slate-200 p-1 z-50"
                           sideOffset={5}
                         >
                           <DropdownMenu.Item
-                            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg cursor-pointer outline-none"
+                            className="flex items-center gap-2 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-100 rounded outline-none"
                             onClick={() => handleExport('txt')}
                           >
-                            <FileType className="w-4 h-4" />
+                            <FileType className="w-3.5 h-3.5" />
                             Export as TXT
                           </DropdownMenu.Item>
                           <DropdownMenu.Item
-                            className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 rounded-lg cursor-pointer outline-none"
+                            className="flex items-center gap-2 px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-100 rounded outline-none"
                             onClick={() => handleExport('pdf')}
                           >
-                            <FileDown className="w-4 h-4" />
+                            <FileDown className="w-3.5 h-3.5" />
                             Export as PDF
                           </DropdownMenu.Item>
                         </DropdownMenu.Content>
@@ -331,20 +322,20 @@ export default function AppPage() {
                 )}
               </div>
 
-              <div className="flex-1 p-5 min-h-[300px] lg:min-h-0">
+              <div className="flex-1 p-4 min-h-[280px] lg:min-h-0">
                 {outputText ? (
                   <div className="h-full overflow-y-auto">
-                    <div className="prose prose-slate prose-sm max-w-none whitespace-pre-wrap text-slate-700 leading-relaxed">
+                    <div className="text-sm text-slate-700 leading-relaxed whitespace-pre-wrap">
                       {outputText}
                     </div>
                   </div>
                 ) : (
-                  <div className="h-full flex flex-col items-center justify-center text-center p-8">
-                    <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-4">
-                      <Sparkles className="w-8 h-8 text-slate-300" />
+                  <div className="h-full flex flex-col items-center justify-center text-center">
+                    <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center mb-3">
+                      <Sparkles className="w-6 h-6 text-slate-300" />
                     </div>
-                    <p className="text-slate-500 font-medium mb-1">No output yet</p>
-                    <p className="text-slate-400 text-sm">Enter your text and click generate to see results</p>
+                    <p className="text-slate-500 text-sm font-medium">No output yet</p>
+                    <p className="text-slate-400 text-xs mt-1">Enter text and click polish to see results</p>
                   </div>
                 )}
               </div>
@@ -353,15 +344,6 @@ export default function AppPage() {
           </div>
         </form>
       </main>
-
-      {/* Footer */}
-      <footer className="border-t border-slate-100 py-6 mt-8">
-        <div className="max-w-6xl mx-auto px-4 flex items-center justify-center text-sm text-slate-400">
-          <Link href="/" className="hover:text-indigo-600 transition-colors">
-            ← Back to Home
-          </Link>
-        </div>
-      </footer>
     </div>
   )
 }
