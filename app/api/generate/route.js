@@ -39,8 +39,9 @@ export async function POST(req) {
       )
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey)
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+    // Use v1 API for gemini-1.5-flash
+    const genAI = new GoogleGenerativeAI(apiKey, { apiVersion: 'v1' })
+    const model = genAI.getGenerativeModel({ model: 'models/gemini-1.5-flash' })
 
     let prompt = ''
 
