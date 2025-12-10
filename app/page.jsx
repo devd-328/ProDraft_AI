@@ -270,7 +270,7 @@ export default function LandingPage() {
                   className="flex items-center gap-2 px-8 py-4 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-white font-semibold text-lg transition-all hover:shadow-xl hover:shadow-indigo-200 hover:-translate-y-0.5"
                 >
                   <Sparkles className="w-5 h-5" />
-                  Start Polishing — It's Free
+                  Start Polishing — It&apos;s Free
                 </Link>
                 <a
                   href="#demo"
@@ -324,7 +324,7 @@ export default function LandingPage() {
                   <div className="space-y-3">
                     <div className="text-sm font-medium text-slate-500">Input</div>
                     <div className="p-4 bg-slate-50 rounded-lg text-slate-600 text-sm">
-                      hey john, wanted to touch base about the project. we're running behind...
+                      hey john, wanted to touch base about the project. we&apos;re running behind...
                     </div>
                   </div>
                   <div className="space-y-3">
@@ -428,7 +428,7 @@ export default function LandingPage() {
                     <Sparkles className="w-8 h-8 text-indigo-600" />
                   </div>
                   <h3 className="text-2xl font-bold text-slate-900 mb-3">
-                    You've used your free demo!
+                    You&apos;ve used your free demo!
                   </h3>
                   <p className="text-slate-600 mb-6 max-w-md mx-auto">
                     Loved it? Sign up for free to get unlimited access to all features — forever free, no credit card required.
@@ -569,7 +569,7 @@ export default function LandingPage() {
                 Perfect for everyone
               </h2>
               <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-                Whether you're a professional, creator, student, or founder
+                Whether you&apos;re a professional, creator, student, or founder
               </p>
             </div>
           </AnimatedText>
@@ -618,7 +618,7 @@ export default function LandingPage() {
                   href="/app"
                   className="inline-flex items-center gap-2 px-8 py-4 bg-white hover:bg-indigo-50 rounded-xl text-indigo-600 font-semibold text-lg transition-all hover:shadow-xl"
                 >
-                  Get Started — It's Free
+                  Get Started — It&apos;s Free
                   <ArrowRight className="w-5 h-5" />
                 </Link>
               </div>
