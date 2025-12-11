@@ -103,7 +103,13 @@ function LoginForm() {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
       {/* Header */}
-      <header className="p-4">
+      <header className="flex items-center p-4">
+        <button
+          onClick={() => router.back()}
+          className="p-1.5 -ml-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors mr-3"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
         <Link href="/" className="flex items-center gap-2 w-fit">
           <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center">
             <Sparkles className="w-4 h-4 text-white" />
