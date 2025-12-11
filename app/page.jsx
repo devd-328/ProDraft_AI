@@ -229,7 +229,7 @@ export default function LandingPage() {
               Try Demo
             </a>
             <Link
-              href="/app"
+              href="/dashboard"
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-white font-medium transition-all hover:shadow-lg hover:shadow-indigo-200"
             >
               Launch App
@@ -266,7 +266,7 @@ export default function LandingPage() {
             <AnimatedText delay={300}>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link
-                  href="/app"
+                  href="/dashboard"
                   className="flex items-center gap-2 px-8 py-4 bg-indigo-600 hover:bg-indigo-700 rounded-xl text-white font-semibold text-lg transition-all hover:shadow-xl hover:shadow-indigo-200 hover:-translate-y-0.5"
                 >
                   <Sparkles className="w-5 h-5" />
@@ -615,7 +615,7 @@ export default function LandingPage() {
                   Join thousands of users who write better, faster with ProDraft AI. No signup required to start.
                 </p>
                 <Link
-                  href="/app"
+                  href="/dashboard"
                   className="inline-flex items-center gap-2 px-8 py-4 bg-white hover:bg-indigo-50 rounded-xl text-indigo-600 font-semibold text-lg transition-all hover:shadow-xl"
                 >
                   Get Started — It&apos;s Free

@@ -19,7 +19,7 @@ function LoginForm() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
-  const redirectTo = searchParams.get('redirect') || '/app'
+  const redirectTo = searchParams.get('redirect') || '/dashboard'
 
   const { register, handleSubmit, watch, formState: { errors }, reset } = useForm()
   const password = watch('password')

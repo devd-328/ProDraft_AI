@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { getUser, signOut, supabase } from '@/lib/supabase'
+import { getUser, signOut, supabase, uploadAvatar } from '@/lib/supabase'
 import { 
   Sparkles, User, Mail, Lock, Save, Loader2, 
-  ChevronLeft, Check, Eye, EyeOff, AlertCircle, LogOut
+  ChevronLeft, Check, Eye, EyeOff, AlertCircle, LogOut, Camera, Upload
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -15,9 +15,11 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
+  const [uploading, setUploading] = useState(false)
   
   // Form states
   const [fullName, setFullName] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState('')
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -27,6 +29,7 @@ export default function SettingsPage() {
   const [passwordSuccess, setPasswordSuccess] = useState(false)
   const [changingPassword, setChangingPassword] = useState(false)
 
+  const fileInputRef = useRef(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -38,10 +41,49 @@ export default function SettingsPage() {
       }
       setUser(currentUser)
       setFullName(currentUser.user_metadata?.full_name || '')
+      setAvatarUrl(currentUser.user_metadata?.avatar_url || '')
       setLoading(false)
     }
     loadUser()
   }, [router])
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+
+    // Basic validation
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file (PNG, JPG, WebP)')
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) { // 2MB limit
+      setError('Image size should be less than 2MB')
+      return
+    }
+
+    setUploading(true)
+    setError('')
+
+    try {
+      const { url, error } = await uploadAvatar(user.id, file)
+      if (error) throw error
+      
+      if (url) {
+        setAvatarUrl(url)
+        // Auto-save the new avatar URL to profile
+        await supabase.auth.updateUser({
+          data: { avatar_url: url }
+        })
+        setSaved(true)
+        setTimeout(() => setSaved(false), 3000)
+      }
+    } catch (err) {
+      console.error(err)
+      setError(err.message || 'Failed to upload avatar. Ensure "avatars" bucket exists.')
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const handleSaveProfile = async (e) => {
     e.preventDefault()
@@ -50,7 +92,10 @@ export default function SettingsPage() {
     
     try {
       const { error } = await supabase.auth.updateUser({
-        data: { full_name: fullName }
+        data: { 
+          full_name: fullName,
+          avatar_url: avatarUrl
+        }
       })
       
       if (error) throw error
@@ -146,18 +191,83 @@ export default function SettingsPage() {
             </h2>
           </div>
           
-          <form onSubmit={handleSaveProfile} className="p-5 space-y-4">
-            <div>
-              <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1.5">
-                Full Name
-              </label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-lg border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition-all text-sm"
-                placeholder="Enter your full name"
-              />
+          <form onSubmit={handleSaveProfile} className="p-5 space-y-6">
+            
+            {/* Avatar Preview & Upload */}
+            <div className="flex items-center gap-4">
+              <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                <div className="w-20 h-20 rounded-full bg-indigo-100 flex items-center justify-center overflow-hidden border-2 border-white shadow-sm ring-2 ring-slate-100 relative">
+                  {uploading ? (
+                    <div className="absolute inset-0 bg-black/20 flex items-center justify-center z-10">
+                      <Loader2 className="w-6 h-6 text-white animate-spin" />
+                    </div>
+                  ) : null}
+                  
+                  {avatarUrl ? (
+                    <img 
+                      src={avatarUrl} 
+                      alt="Avatar" 
+                      className={`w-full h-full object-cover transition-opacity ${uploading ? 'opacity-50' : ''}`}
+                      onError={(e) => e.target.style.display = 'none'} 
+                    />
+                  ) : (
+                    <span className="text-2xl font-bold text-indigo-600">
+                      {(fullName || user.email || 'U').charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                  
+                  {/* Overlay on hover */}
+                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Camera className="w-6 h-6 text-white" />
+                  </div>
+                </div>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileSelect} 
+                  accept="image/png, image/jpeg, image/jpg, image/webp" 
+                  className="hidden" 
+                />
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-slate-900">{fullName || 'User'}</h3>
+                <button 
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1 mt-1"
+                >
+                  <Upload className="w-3 h-3" />
+                  Upload new picture
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1.5">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition-all text-sm"
+                  placeholder="Enter your full name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-500 uppercase tracking-wide mb-1.5">
+                  Avatar URL
+                </label>
+                <input
+                  type="url"
+                  value={avatarUrl}
+                  onChange={(e) => setAvatarUrl(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-lg border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition-all text-sm"
+                  placeholder="https://example.com/avatar.jpg"
+                />
+              </div>
             </div>
             
             <div>
@@ -170,7 +280,7 @@ export default function SettingsPage() {
                   type="email"
                   value={user?.email || ''}
                   disabled
-                  className="w-full pl-10 pr-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 text-sm"
+                  className="w-full pl-10 pr-3 py-2.5 rounded-lg border border-slate-200 bg-slate-50 text-slate-500 text-sm cursor-not-allowed"
                 />
               </div>
               <p className="text-xs text-slate-400 mt-1">Email cannot be changed</p>
@@ -185,7 +295,7 @@ export default function SettingsPage() {
             
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || uploading}
               className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white text-sm font-medium rounded-lg transition-colors"
             >
               {saving ? (
