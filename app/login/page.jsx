@@ -4,7 +4,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useForm } from 'react-hook-form'
 import { useSearchParams } from 'next/navigation'
 import { signIn, signUp, signInWithGoogle, getUser } from '@/lib/supabase'
-import { Sparkles, Mail, Lock, Loader2, User, Eye, EyeOff, ArrowRight, CheckCircle2 } from 'lucide-react'
+import { Sparkles, Mail, Lock, Loader2, User, Eye, EyeOff, ArrowRight, CheckCircle2, ChevronLeft } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
