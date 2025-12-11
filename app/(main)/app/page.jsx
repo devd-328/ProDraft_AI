@@ -105,14 +105,26 @@ function AppContent() {
     }
 
     if (currentDraftId) {
-      await updateDraft(currentDraftId, draftData)
-      setDraftTitle(saveName)
+      const { data, error } = await updateDraft(currentDraftId, draftData)
+      if (!error) {
+        setDraftTitle(saveName)
+        // Track the update as a saved event in history
+        const totalLength = suggestions.reduce((acc, str) => acc + str.length, 0)
+        await trackUsage(user.id, format, saveName.length, totalLength, saveName, JSON.stringify(suggestions), true)
+      } else {
+        console.error("Failed to update draft:", error)
+      }
     } else {
-      const { data } = await createDraft(draftData)
-      if (data) {
+      const { data, error } = await createDraft(draftData)
+      if (data && !error) {
         setCurrentDraftId(data.id)
         setDraftTitle(saveName)
         window.history.replaceState(null, '', `/app?id=${data.id}`)
+        // Track the new save as a saved event in history
+        const totalLength = suggestions.reduce((acc, str) => acc + str.length, 0)
+        await trackUsage(user.id, format, saveName.length, totalLength, saveName, JSON.stringify(suggestions), true)
+      } else {
+        console.error("Failed to create draft:", error)
       }
     }
     
@@ -142,7 +154,7 @@ function AppContent() {
         
         // Calculate total length for tracking
         const totalLength = outputArray.reduce((acc, str) => acc + str.length, 0)
-        const { error: trackError } = await trackUsage(user.id, format, data.inputText.length, totalLength, data.inputText, JSON.stringify(outputArray))
+        const { error: trackError } = await trackUsage(user.id, format, data.inputText.length, totalLength, data.inputText, JSON.stringify(outputArray), false) // isSaved: false
         
         if (trackError) {
           console.error("Failed to track usage:", trackError)
@@ -303,6 +315,20 @@ function AppContent() {
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-400">{inputText.length} characters</span>
                   
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setValue('inputText', '');
+                      setSuggestions([]);
+                    }}
+                    disabled={!inputText.trim()}
+                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+                    title="Clear Input"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    Clear
+                  </button>
+
                   {/* Save Draft Button */}
                   <button
                     type="button"

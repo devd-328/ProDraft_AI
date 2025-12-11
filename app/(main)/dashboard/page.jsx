@@ -8,7 +8,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { 
   Sparkles, LogOut, User, History, Zap, TrendingUp, 
   ChevronRight, Loader2, Settings, LayoutDashboard,
-  Mail, Share2, FileText, AlignLeft, ChevronDown, Wand2, Calendar, Trash2, Edit, Eye, X, AlertTriangle, RefreshCw
+  Mail, Share2, FileText, AlignLeft, ChevronDown, Wand2, Calendar, Trash2, Edit, Eye, X, AlertTriangle, RefreshCw, Star
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -28,12 +28,10 @@ const formatLabels = {
 
 const getHistoryTitle = (item) => {
   if (item.input_text) {
-    // Get first line, strip whitespace
     const text = item.input_text.trim().split('\n')[0].trim()
-    // Truncate
     return text.length > 50 ? text.substring(0, 50) + '...' : text
   }
-  return formatLabels[item.format] || 'Untitled Generation'
+  return item.title || formatLabels[item.format] || 'Untitled Generation'
 }
 
 export default function DashboardPage() {
@@ -43,11 +41,10 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
+  const [recentActivity, setRecentActivity] = useState([]) // Combined list
   const [viewHistoryItem, setViewHistoryItem] = useState(null)
   const [itemToDelete, setItemToDelete] = useState(null) // { id: string, type: 'draft' | 'history' | 'all-history' }
   const router = useRouter()
-
-  const [recentActivity, setRecentActivity] = useState([])
 
   const loadData = async (userId) => {
     if (!userId) return
@@ -62,10 +59,10 @@ export default function DashboardPage() {
     if (usageRes.data) setUsage(usageRes.data)
     if (draftsRes.data) setDrafts(draftsRes.data)
 
-    // Combine and sort for Recent Activity
+    // Combine and sort for Activity
     const combined = [
-      ...(usageRes.data || []).map(item => ({ ...item, type: 'history' })),
-      ...(draftsRes.data || []).map(item => ({ ...item, type: 'draft' }))
+      ...(usageRes.data || []).map(item => ({ ...item, type: 'history', is_saved: item.is_saved || false })),
+      ...(draftsRes.data || []).map(item => ({ ...item, type: 'draft', is_saved: true }))
     ].sort((a, b) => new Date(b.created_at || b.updated_at) - new Date(a.created_at || a.updated_at))
     
     setRecentActivity(combined)
@@ -86,7 +83,6 @@ export default function DashboardPage() {
     }
     init()
 
-    // Add focus listener to refresh data when returning to tab
     const onFocus = async () => {
       const u = await getUser()
       if (u) loadData(u.id)
@@ -113,19 +109,25 @@ export default function DashboardPage() {
       const { error: err } = await deleteDraft(itemToDelete.id)
       error = err
       if (!err) {
-        setDrafts(drafts.filter(d => d.id !== itemToDelete.id))
+        // Optimistic update
+        const newDrafts = drafts.filter(d => d.id !== itemToDelete.id)
+        setDrafts(newDrafts)
+        setRecentActivity(prev => prev.filter(item => !(item.id === itemToDelete.id && item.type === 'draft')))
       }
     } else if (itemToDelete.type === 'history') {
       const { error: err } = await deleteUsage(itemToDelete.id)
       error = err
       if (!err) {
-        setUsage(usage.filter(u => u.id !== itemToDelete.id))
+        const newUsage = usage.filter(u => u.id !== itemToDelete.id)
+        setUsage(newUsage)
+        setRecentActivity(prev => prev.filter(item => !(item.id === itemToDelete.id && item.type === 'history')))
       }
     } else if (itemToDelete.type === 'all-history') {
       const { error: err } = await deleteAllUsage(user.id)
       error = err
       if (!err) {
         setUsage([])
+        setRecentActivity(prev => prev.filter(item => item.type !== 'history'))
       }
     }
 
@@ -178,90 +180,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-lg font-semibold text-slate-900">ProDraft</span>
-          </Link>
-
-          <div className="flex items-center gap-3">
-            <Link
-              href="/app"
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
-            >
-              <Wand2 className="w-3.5 h-3.5" />
-              New Draft
-            </Link>
-
-            {/* User Menu */}
-            <DropdownMenu.Root>
-              <DropdownMenu.Trigger asChild>
-                <button className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-slate-100 transition-colors">
-                  <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center overflow-hidden">
-                    {user?.user_metadata?.avatar_url ? (
-                      <img 
-                        src={user.user_metadata.avatar_url} 
-                        alt="Avatar" 
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-xs font-semibold text-indigo-600">{getUserInitials()}</span>
-                    )}
-                  </div>
-                  <ChevronDown className="w-4 h-4 text-slate-400 hidden sm:block" />
-                </button>
-              </DropdownMenu.Trigger>
-
-              <DropdownMenu.Portal>
-                <DropdownMenu.Content
-                  className="min-w-[200px] bg-white rounded-xl shadow-lg shadow-slate-200/50 border border-slate-200 p-1.5 z-50"
-                  sideOffset={8}
-                  align="end"
-                >
-                  <div className="px-3 py-2 border-b border-slate-100 mb-1">
-                    <p className="text-sm font-medium text-slate-900">{getDisplayName()}</p>
-                    <p className="text-xs text-slate-500">{user?.email}</p>
-                  </div>
-                  
-                  <DropdownMenu.Item asChild>
-                    <Link
-                      href="/dashboard"
-                      className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 rounded-lg outline-none"
-                    >
-                      <LayoutDashboard className="w-4 h-4" />
-                      Dashboard
-                    </Link>
-                  </DropdownMenu.Item>
-                  
-                  <DropdownMenu.Item asChild>
-                    <Link
-                      href="/settings"
-                      className="flex items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 rounded-lg outline-none"
-                    >
-                      <Settings className="w-4 h-4" />
-                      Settings
-                    </Link>
-                  </DropdownMenu.Item>
-
-                  <DropdownMenu.Separator className="h-px bg-slate-100 my-1" />
-                  
-                  <DropdownMenu.Item
-                    className="flex items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg outline-none"
-                    onClick={handleSignOut}
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Sign Out
-                  </DropdownMenu.Item>
-                </DropdownMenu.Content>
-              </DropdownMenu.Portal>
-            </DropdownMenu.Root>
-          </div>
-        </div>
-      </header>
+      {/* Header removed (handled by Sidebar) */}
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
         {/* Welcome Header */}
@@ -432,35 +351,33 @@ export default function DashboardPage() {
                 <div className="divide-y divide-slate-50">
                   {recentActivity.slice(0, 5).map((item) => {
                     const Icon = formatIcons[item.format] || FileText
-                    const isDraft = item.type === 'draft'
+                    const isSavedItem = item.is_saved === true; // Use the is_saved flag
                     return (
                       <div key={`${item.type}-${item.id}`} className="px-5 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors group">
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDraft ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500'}`}>
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isSavedItem ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500'}`}>
                             <Icon className="w-4 h-4" />
                           </div>
                           <div>
                             <div className="flex items-center gap-2">
                               <p className="text-sm font-medium text-slate-900">
-                                {isDraft ? (item.title || 'Untitled Draft') : getHistoryTitle(item)}
+                                {getHistoryTitle(item)}
                               </p>
-                              {isDraft && (
-                                <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700">
-                                  Draft
-                                </span>
+                              {isSavedItem && (
+                                <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
                               )}
                             </div>
                             <p className="text-xs text-slate-400">
-                              {isDraft 
-                                ? `Last updated ${new Date(item.updated_at).toLocaleDateString()}`
-                                : `${formatLabels[item.format]} • ${item.output_length} chars`
+                              {item.type === 'draft' // For saved drafts (from drafts table)
+                                ? `Draft • Updated ${new Date(item.updated_at).toLocaleDateString()}`
+                                : `${formatLabels[item.format]} • ${item.output_length} chars` // For history items (from usage table)
                               }
                             </p>
                           </div>
                         </div>
                         
                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          {isDraft ? (
+                          {item.type === 'draft' ? ( // Drafts are always editable via link
                             <Link
                               href={`/app?id=${item.id}`}
                               className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
@@ -468,7 +385,7 @@ export default function DashboardPage() {
                             >
                               <Edit className="w-3.5 h-3.5" />
                             </Link>
-                          ) : (
+                          ) : ( // History items are viewable
                             <button
                               onClick={() => setViewHistoryItem(item)}
                               className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
@@ -477,6 +394,13 @@ export default function DashboardPage() {
                               <Eye className="w-3.5 h-3.5" />
                             </button>
                           )}
+                           <button
+                            onClick={() => setItemToDelete({ id: item.id, type: item.type })} // Correctly pass type
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </div>
                     )
@@ -522,7 +446,10 @@ export default function DashboardPage() {
                           <Icon className="w-5 h-5 text-slate-500" />
                         </div>
                         <div>
-                          <h4 className="text-sm font-medium text-slate-900">{draft.title || 'Untitled Draft'}</h4>
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-medium text-slate-900">{draft.title || 'Untitled Draft'}</h4>
+                            <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                          </div>
                           <p className="text-xs text-slate-400 mt-0.5">
                             {formatLabels[draft.format]} • {new Date(draft.updated_at).toLocaleDateString()}
                           </p>
@@ -576,7 +503,7 @@ export default function DashboardPage() {
                   <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
                   Refresh
                 </button>
-                {usage.length > 0 && (
+                {recentActivity.length > 0 && (
                   <button
                     onClick={() => setItemToDelete({ type: 'all-history' })}
                     className="text-xs text-red-600 hover:text-red-700 font-medium flex items-center gap-1"
@@ -588,54 +515,74 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {usage.length > 0 ? (
-              <div className="divide-y divide-slate-50">
-                {usage.map((record) => {
-                  const Icon = formatIcons[record.format] || FileText
-                  return (
-                    <div key={record.id} className="px-5 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors group">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center">
-                          <Icon className="w-5 h-5 text-slate-500" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium text-slate-900">{getHistoryTitle(record)}</p>
-                          <p className="text-xs text-slate-400">
-                            {formatLabels[record.format]} • {record.output_length} chars
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="text-right mr-2">
-                          <p className="text-xs text-slate-500">
-                            {new Date(record.created_at).toLocaleDateString()}
-                          </p>
-                          <p className="text-xs text-slate-400">
-                            {new Date(record.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        </div>
-                        <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => setViewHistoryItem(record)}
-                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                            title="View Details"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => setItemToDelete({ id: record.id, type: 'history' })}
-                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
+                        {recentActivity.length > 0 ? (
+                          <div className="divide-y divide-slate-50">
+                            {recentActivity.map((item) => {
+                              const Icon = formatIcons[item.format] || FileText
+                              const isSavedItem = item.is_saved === true; // Use the is_saved flag
+                              return (
+                                <div key={`${item.type}-${item.id}`} className="px-5 py-4 flex items-center justify-between hover:bg-slate-50 transition-colors group">
+                                  <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isSavedItem ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500'}`}>
+                                      <Icon className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <p className="text-sm font-medium text-slate-900">
+                                          {getHistoryTitle(item)}
+                                        </p>
+                                        {isSavedItem && (
+                                          <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                                        )}
+                                      </div>
+                                      <p className="text-xs text-slate-400">
+                                        {isSavedItem
+                                          ? `Saved • ${formatLabels[item.format]} • ${new Date(item.created_at).toLocaleDateString()}`
+                                          : `${formatLabels[item.format]} • ${item.output_length} chars • ${new Date(item.created_at).toLocaleDateString()}`
+                                        }
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="text-right mr-2">
+                                      <p className="text-xs text-slate-500">
+                                        {new Date(item.created_at || item.updated_at).toLocaleDateString()}
+                                      </p>
+                                      <p className="text-xs text-slate-400">
+                                        {new Date(item.created_at || item.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      </p>
+                                    </div>
+                                    <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
+                                      {item.type === 'draft' ? (
+                                        <Link
+                                          href={`/app?id=${item.id}`}
+                                          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                          title="Edit Draft"
+                                        >
+                                          <Edit className="w-4 h-4" />
+                                        </Link>
+                                      ) : (
+                                        <button
+                                          onClick={() => setViewHistoryItem(item)}
+                                          className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                          title="View Details"
+                                        >
+                                          <Eye className="w-4 h-4" />
+                                        </button>
+                                      )}
+                                      <button
+                                        onClick={() => setItemToDelete({ id: item.id, type: item.type })}
+                                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                        title="Delete"
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            })}
+                          </div>            ) : (
               <div className="px-5 py-10 text-center">
                 <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center mx-auto mb-3">
                   <Sparkles className="w-6 h-6 text-slate-300" />
