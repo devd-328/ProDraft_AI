@@ -164,20 +164,9 @@ export default function SettingsPage() {
       <header className="bg-white border-b border-slate-200">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Link 
-              href="/app" 
-              className="p-1.5 -ml-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </Link>
+            {/* Sidebar toggle could go here, but navigation is now handled by Sidebar component */}
             <h1 className="text-lg font-semibold text-slate-900">Settings</h1>
           </div>
-          
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-indigo-600 rounded-lg flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-white" />
-            </div>
-          </Link>
         </div>
       </header>
 

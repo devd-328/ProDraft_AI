@@ -70,16 +70,33 @@ export default function DashboardPage() {
   const proceedWithDelete = async () => {
     if (!itemToDelete) return
 
+    let error = null
+
     if (itemToDelete.type === 'draft') {
-      await deleteDraft(itemToDelete.id)
-      setDrafts(drafts.filter(d => d.id !== itemToDelete.id))
+      const { error: err } = await deleteDraft(itemToDelete.id)
+      error = err
+      if (!err) {
+        setDrafts(drafts.filter(d => d.id !== itemToDelete.id))
+      }
     } else if (itemToDelete.type === 'history') {
-      await deleteUsage(itemToDelete.id)
-      setUsage(usage.filter(u => u.id !== itemToDelete.id))
+      const { error: err } = await deleteUsage(itemToDelete.id)
+      error = err
+      if (!err) {
+        setUsage(usage.filter(u => u.id !== itemToDelete.id))
+      }
     } else if (itemToDelete.type === 'all-history') {
-      await deleteAllUsage(user.id)
-      setUsage([])
+      const { error: err } = await deleteAllUsage(user.id)
+      error = err
+      if (!err) {
+        setUsage([])
+      }
     }
+
+    if (error) {
+      console.error('Delete failed:', error)
+      alert('Failed to delete item. Please try again.')
+    }
+
     setItemToDelete(null)
   }
 
