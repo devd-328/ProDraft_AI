@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useForm } from 'react-hook-form'
 import { useRouter, useSearchParams } from 'next/navigation'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
@@ -20,7 +20,7 @@ const formatOptions = [
   { id: 'summary', label: 'Summary', icon: AlignLeft, description: 'Key points' },
 ]
 
-export default function AppPage() {
+function AppContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const initialFormat = searchParams.get('format') || 'email'
@@ -497,5 +497,21 @@ export default function AppPage() {
         </form>
       </main>
     </div>
+  )
+}
+
+function AppLoading() {
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <Loader2 className="w-8 h-8 text-indigo-600 animate-spin" />
+    </div>
+  )
+}
+
+export default function AppPage() {
+  return (
+    <Suspense fallback={<AppLoading />}>
+      <AppContent />
+    </Suspense>
   )
 }
