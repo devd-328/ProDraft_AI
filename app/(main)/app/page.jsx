@@ -4,10 +4,11 @@ import { useState, useEffect, Suspense } from 'react'
 import { useForm } from 'react-hook-form'
 import { useRouter, useSearchParams } from 'next/navigation'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import * as Dialog from '@radix-ui/react-dialog'
 import { 
   Sparkles, Copy, RefreshCw, Mail, Share2, FileText, AlignLeft, 
   Download, Check, User, ChevronDown, Settings,
-  FileDown, FileType, LogOut, Loader2, LayoutDashboard, Wand2, Save
+  FileDown, FileType, LogOut, Loader2, LayoutDashboard, Wand2, Save, X
 } from 'lucide-react'
 import Link from 'next/link'
 import { getUser, trackUsage, signOut, createDraft, getDraft, updateDraft } from '@/lib/supabase'
@@ -35,6 +36,10 @@ function AppContent() {
   const [authLoading, setAuthLoading] = useState(true)
   const [currentDraftId, setCurrentDraftId] = useState(draftId)
   const [draftTitle, setDraftTitle] = useState('')
+  
+  // Save Dialog State
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const [saveName, setSaveName] = useState('')
 
   const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm()
   const inputText = watch('inputText', '')
@@ -71,16 +76,19 @@ function AppContent() {
     router.push('/')
   }
 
-  const handleSaveDraft = async () => {
+  const handleSaveClick = () => {
     if (!inputText || !user) return
+    setSaveName(draftTitle || `Draft ${new Date().toLocaleDateString()}`)
+    setShowSaveDialog(true)
+  }
 
-    const title = prompt('Name your draft:', draftTitle || `Draft ${new Date().toLocaleDateString()}`)
-    if (!title) return
+  const performSave = async () => {
+    if (!saveName.trim()) return
 
     setIsSaving(true)
     const draftData = {
       user_id: user.id,
-      title: title,
+      title: saveName,
       input_text: inputText,
       output_text: JSON.stringify(suggestions),
       format: format
@@ -88,19 +96,18 @@ function AppContent() {
 
     if (currentDraftId) {
       await updateDraft(currentDraftId, draftData)
-      setDraftTitle(title)
-      alert('Draft updated!')
+      setDraftTitle(saveName)
     } else {
       const { data } = await createDraft(draftData)
       if (data) {
         setCurrentDraftId(data.id)
-        setDraftTitle(title)
-        alert('Draft saved!')
-        // Update URL without reload
+        setDraftTitle(saveName)
         window.history.replaceState(null, '', `/app?id=${data.id}`)
       }
     }
+    
     setIsSaving(false)
+    setShowSaveDialog(false)
   }
 
   const onSubmit = async (data) => {
@@ -285,7 +292,7 @@ function AppContent() {
                   {/* Save Draft Button */}
                   <button
                     type="button"
-                    onClick={handleSaveDraft}
+                    onClick={handleSaveClick}
                     disabled={isSaving || !inputText.trim()}
                     className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded transition-colors disabled:opacity-50"
                   >
@@ -495,6 +502,65 @@ function AppContent() {
 
           </div>
         </form>
+
+        {/* Save Draft Dialog */}
+        <Dialog.Root open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 animate-fade-in" />
+            <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm bg-white rounded-2xl shadow-2xl p-6 z-50 outline-none animate-scale-in">
+              <div className="flex flex-col">
+                <div className="flex items-center justify-between mb-4">
+                  <Dialog.Title className="text-lg font-semibold text-slate-900">
+                    Save Draft
+                  </Dialog.Title>
+                  <button
+                    onClick={() => setShowSaveDialog(false)}
+                    className="p-1 rounded-full hover:bg-slate-100 text-slate-500 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                      Draft Name
+                    </label>
+                    <input
+                      type="text"
+                      value={saveName}
+                      onChange={(e) => setSaveName(e.target.value)}
+                      placeholder="e.g. Q1 Marketing Plan"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-200 focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100 outline-none transition-all text-sm"
+                      autoFocus
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      onClick={() => setShowSaveDialog(false)}
+                      className="flex-1 px-4 py-2 bg-white border border-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={performSave}
+                      disabled={isSaving || !saveName.trim()}
+                      className="flex-1 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 transition-colors flex items-center justify-center gap-2"
+                    >
+                      {isSaving ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Save className="w-4 h-4" />
+                      )}
+                      Save
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
       </main>
     </div>
   )

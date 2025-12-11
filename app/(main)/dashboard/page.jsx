@@ -8,7 +8,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { 
   Sparkles, LogOut, User, History, Zap, TrendingUp, 
   ChevronRight, Loader2, Settings, LayoutDashboard,
-  Mail, Share2, FileText, AlignLeft, ChevronDown, Wand2, Calendar, Trash2, Edit, Eye, X, AlertTriangle
+  Mail, Share2, FileText, AlignLeft, ChevronDown, Wand2, Calendar, Trash2, Edit, Eye, X, AlertTriangle, RefreshCw
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -31,36 +31,56 @@ export default function DashboardPage() {
   const [usage, setUsage] = useState([])
   const [drafts, setDrafts] = useState([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
   const [viewHistoryItem, setViewHistoryItem] = useState(null)
   const [itemToDelete, setItemToDelete] = useState(null) // { id: string, type: 'draft' | 'history' | 'all-history' }
   const router = useRouter()
 
+  const loadData = async (userId) => {
+    if (!userId) return
+    setRefreshing(true)
+    
+    // Load usage data
+    const { data: usageData } = await getUserUsage(userId)
+    if (usageData) {
+      setUsage(usageData)
+    }
+    
+    // Load drafts
+    const { data: draftsData } = await getDrafts(userId)
+    if (draftsData) {
+      setDrafts(draftsData)
+    }
+
+    setLoading(false)
+    setRefreshing(false)
+  }
+
   useEffect(() => {
-    async function loadData() {
+    async function init() {
       const currentUser = await getUser()
       if (!currentUser) {
         router.push('/login?redirect=/dashboard')
         return
       }
       setUser(currentUser)
-
-      // Load usage data
-      const { data: usageData } = await getUserUsage(currentUser.id)
-      if (usageData) {
-        setUsage(usageData)
-      }
-      
-      // Load drafts
-      const { data: draftsData } = await getDrafts(currentUser.id)
-      if (draftsData) {
-        setDrafts(draftsData)
-      }
-
-      setLoading(false)
+      await loadData(currentUser.id)
     }
-    loadData()
+    init()
+
+    // Add focus listener to refresh data when returning to tab
+    const onFocus = async () => {
+      const u = await getUser()
+      if (u) loadData(u.id)
+    }
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
   }, [router])
+
+  const handleRefresh = async () => {
+    if (user) await loadData(user.id)
+  }
 
   const handleSignOut = async () => {
     await signOut()
@@ -518,15 +538,25 @@ export default function DashboardPage() {
                 <History className="w-4 h-4 text-slate-400" />
                 All Activity
               </h3>
-              {usage.length > 0 && (
+              <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setItemToDelete({ type: 'all-history' })}
-                  className="text-xs text-red-600 hover:text-red-700 font-medium flex items-center gap-1"
+                  onClick={handleRefresh}
+                  disabled={refreshing}
+                  className="text-xs text-slate-500 hover:text-indigo-600 font-medium flex items-center gap-1 transition-colors"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Clear All
+                  <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                  Refresh
                 </button>
-              )}
+                {usage.length > 0 && (
+                  <button
+                    onClick={() => setItemToDelete({ type: 'all-history' })}
+                    className="text-xs text-red-600 hover:text-red-700 font-medium flex items-center gap-1"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Clear All
+                  </button>
+                )}
+              </div>
             </div>
 
             {usage.length > 0 ? (
