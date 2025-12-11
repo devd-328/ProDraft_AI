@@ -76,9 +76,19 @@ function AppContent() {
     router.push('/')
   }
 
+  const generateDraftName = (text) => {
+    if (!text) return `Draft ${new Date().toLocaleDateString()}`
+    // Take first 5 words or first 40 chars
+    const firstLine = text.split('\n')[0]
+    const words = firstLine.split(/\s+/).slice(0, 6).join(' ')
+    return words.length > 40 ? words.substring(0, 40) + '...' : words
+  }
+
   const handleSaveClick = () => {
     if (!inputText || !user) return
-    setSaveName(draftTitle || `Draft ${new Date().toLocaleDateString()}`)
+    // Suggest a name if one doesn't exist, otherwise keep existing
+    const suggestedName = draftTitle || generateDraftName(inputText)
+    setSaveName(suggestedName)
     setShowSaveDialog(true)
   }
 
@@ -132,7 +142,11 @@ function AppContent() {
         
         // Calculate total length for tracking
         const totalLength = outputArray.reduce((acc, str) => acc + str.length, 0)
-        await trackUsage(user.id, format, data.inputText.length, totalLength, data.inputText, JSON.stringify(outputArray))
+        const { error: trackError } = await trackUsage(user.id, format, data.inputText.length, totalLength, data.inputText, JSON.stringify(outputArray))
+        
+        if (trackError) {
+          console.error("Failed to track usage:", trackError)
+        }
       } else {
         setSuggestions([`Error: ${result.error}`])
       }

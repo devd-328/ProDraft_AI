@@ -26,6 +26,16 @@ const formatLabels = {
   summary: 'Summary'
 }
 
+const getHistoryTitle = (item) => {
+  if (item.input_text) {
+    // Get first line, strip whitespace
+    const text = item.input_text.trim().split('\n')[0].trim()
+    // Truncate
+    return text.length > 50 ? text.substring(0, 50) + '...' : text
+  }
+  return formatLabels[item.format] || 'Untitled Generation'
+}
+
 export default function DashboardPage() {
   const [user, setUser] = useState(null)
   const [usage, setUsage] = useState([])
@@ -37,21 +47,28 @@ export default function DashboardPage() {
   const [itemToDelete, setItemToDelete] = useState(null) // { id: string, type: 'draft' | 'history' | 'all-history' }
   const router = useRouter()
 
+  const [recentActivity, setRecentActivity] = useState([])
+
   const loadData = async (userId) => {
     if (!userId) return
     setRefreshing(true)
     
-    // Load usage data
-    const { data: usageData } = await getUserUsage(userId)
-    if (usageData) {
-      setUsage(usageData)
-    }
+    // Load usage and drafts in parallel
+    const [usageRes, draftsRes] = await Promise.all([
+      getUserUsage(userId),
+      getDrafts(userId)
+    ])
+
+    if (usageRes.data) setUsage(usageRes.data)
+    if (draftsRes.data) setDrafts(draftsRes.data)
+
+    // Combine and sort for Recent Activity
+    const combined = [
+      ...(usageRes.data || []).map(item => ({ ...item, type: 'history' })),
+      ...(draftsRes.data || []).map(item => ({ ...item, type: 'draft' }))
+    ].sort((a, b) => new Date(b.created_at || b.updated_at) - new Date(a.created_at || a.updated_at))
     
-    // Load drafts
-    const { data: draftsData } = await getDrafts(userId)
-    if (draftsData) {
-      setDrafts(draftsData)
-    }
+    setRecentActivity(combined)
 
     setLoading(false)
     setRefreshing(false)
@@ -407,47 +424,59 @@ export default function DashboardPage() {
                   onClick={() => setActiveTab('history')}
                   className="text-xs text-indigo-600 hover:text-indigo-700 font-medium"
                 >
-                  View all
+                  View all history
                 </button>
               </div>
 
-              {usage.length > 0 ? (
+              {recentActivity.length > 0 ? (
                 <div className="divide-y divide-slate-50">
-                  {usage.slice(0, 5).map((record) => {
-                    const Icon = formatIcons[record.format] || FileText
+                  {recentActivity.slice(0, 5).map((item) => {
+                    const Icon = formatIcons[item.format] || FileText
+                    const isDraft = item.type === 'draft'
                     return (
-                      <div key={record.id} className="px-5 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors group">
+                      <div key={`${item.type}-${item.id}`} className="px-5 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors group">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
-                            <Icon className="w-4 h-4 text-slate-500" />
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDraft ? 'bg-amber-100 text-amber-600' : 'bg-slate-100 text-slate-500'}`}>
+                            <Icon className="w-4 h-4" />
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-slate-900">{formatLabels[record.format]}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-medium text-slate-900">
+                                {isDraft ? (item.title || 'Untitled Draft') : getHistoryTitle(item)}
+                              </p>
+                              {isDraft && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700">
+                                  Draft
+                                </span>
+                              )}
+                            </div>
                             <p className="text-xs text-slate-400">
-                              {record.input_length} → {record.output_length} chars
+                              {isDraft 
+                                ? `Last updated ${new Date(item.updated_at).toLocaleDateString()}`
+                                : `${formatLabels[item.format]} • ${item.output_length} chars`
+                              }
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-slate-400 mr-2">
-                            {new Date(record.created_at).toLocaleDateString()}
-                          </span>
-                          <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
+                        
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {isDraft ? (
+                            <Link
+                              href={`/app?id=${item.id}`}
+                              className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                              title="Edit Draft"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </Link>
+                          ) : (
                             <button
-                              onClick={() => setViewHistoryItem(record)}
+                              onClick={() => setViewHistoryItem(item)}
                               className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                               title="View Details"
                             >
                               <Eye className="w-3.5 h-3.5" />
                             </button>
-                            <button
-                              onClick={() => setItemToDelete({ id: record.id, type: 'history' })}
-                              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Delete"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                          )}
                         </div>
                       </div>
                     )
@@ -570,9 +599,9 @@ export default function DashboardPage() {
                           <Icon className="w-5 h-5 text-slate-500" />
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-slate-900">{formatLabels[record.format]}</p>
+                          <p className="text-sm font-medium text-slate-900">{getHistoryTitle(record)}</p>
                           <p className="text-xs text-slate-400">
-                            {record.input_length} characters → {record.output_length} characters
+                            {formatLabels[record.format]} • {record.output_length} chars
                           </p>
                         </div>
                       </div>
