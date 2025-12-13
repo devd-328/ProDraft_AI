@@ -42,6 +42,8 @@ ProDraft AI is a **free, AI-powered content polishing tool** that transforms you
 | 📱 **Responsive Design** | Beautiful, minimalist UI that works on any device |
 | 🔐 **Secure Auth** | Email/password and Google OAuth authentication via Supabase |
 | 📊 **Usage Dashboard** | Track your content polishing history and statistics |
+| 💾 **Save Drafts** | Save your work and continue later |
+| 👤 **Profile Settings** | Manage your personal information and security |
 | 📥 **Export Options** | Download polished content as TXT or PDF |
 | ⚡ **Rate Limiting** | Built-in protection against API abuse |
 | 🆓 **100% Free** | No premium tiers, no credit card required |
@@ -189,10 +191,13 @@ ProDraft-AI/
 │   ├── api/
 │   │   └── generate/
 │   │       └── route.js      # Gemini AI API endpoint
-│   ├── app/
-│   │   └── page.jsx          # Main polishing tool
-│   ├── dashboard/
-│   │   └── page.jsx          # User dashboard
+│   ├── (main)/
+│   │   ├── app/
+│   │   │   └── page.jsx      # Main polishing tool
+│   │   ├── dashboard/
+│   │   │   └── page.jsx      # User dashboard
+│   │   └── settings/
+│   │       └── page.jsx      # User settings
 │   ├── login/
 │   │   └── page.jsx          # Auth page
 │   ├── globals.css           # Global styles
